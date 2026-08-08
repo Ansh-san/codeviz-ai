@@ -9,13 +9,15 @@ export function useAnalyzer() {
   const [analysis, setAnalysis] = useState(null);
   const [isMock, setIsMock] = useState(false);
 
-  const analyze = useCallback(async (code, nodeLabel, nodeType, language) => {
+  const analyze = useCallback(async (code, nodeLabel, nodeType, language, mode = 'tech') => {
     setLoading(true);
     setError(null);
     setAnalysis(null);
     setIsMock(false);
     try {
-      const res = await axios.post(`${API_BASE}/analyze`, { code, nodeLabel, nodeType, language }, {
+      const res = await axios.post(`${API_BASE}/analyze`, {
+        code, nodeLabel, nodeType, language, mode
+      }, {
         timeout: 30000
       });
       setAnalysis(res.data.analysis);

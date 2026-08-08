@@ -1,9 +1,19 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { X, Copy, Check, Bot, AlertTriangle, Code2, Sparkles } from 'lucide-react';
+import { X, Copy, Check, Bot, AlertTriangle, Code2, Sparkles, Zap, Lightbulb } from 'lucide-react';
 import { useState } from 'react';
 
-export default function AIPanel({ isOpen, onClose, selectedNode, analysis, loading, error, isMock }) {
+export default function AIPanel({
+  isOpen,
+  onClose,
+  selectedNode,
+  analysis,
+  loading,
+  error,
+  isMock,
+  analysisMode,
+  onModeChange
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -52,6 +62,30 @@ export default function AIPanel({ isOpen, onClose, selectedNode, analysis, loadi
         </div>
       </div>
 
+      {/* Mode Toggle */}
+      {selectedNode && (
+        <div className="ai-panel__mode-toggle">
+          <button
+            className={`mode-btn ${analysisMode === 'tech' ? 'mode-btn--active' : ''}`}
+            onClick={() => onModeChange('tech')}
+            id="btn-mode-tech"
+            title="Technical analysis with complexity, invariants, and refactoring"
+          >
+            <Zap size={13} />
+            <span>Technical</span>
+          </button>
+          <button
+            className={`mode-btn ${analysisMode === 'layman' ? 'mode-btn--active' : ''}`}
+            onClick={() => onModeChange('layman')}
+            id="btn-mode-layman"
+            title="Plain English explanation with analogies"
+          >
+            <Lightbulb size={13} />
+            <span>Plain English</span>
+          </button>
+        </div>
+      )}
+
       {/* Selected Node Info */}
       {selectedNode && (
         <div className="ai-panel__node-info">
@@ -98,7 +132,11 @@ export default function AIPanel({ isOpen, onClose, selectedNode, analysis, loadi
           <div className="ai-panel__loading">
             <div className="loading-pulse">
               <Sparkles size={24} className="loading-icon" />
-              <p className="loading-text">Gemini is analyzing your code...</p>
+              <p className="loading-text">
+                {analysisMode === 'layman'
+                  ? 'Crafting a plain-English explanation...'
+                  : 'Gemini is analyzing your code...'}
+              </p>
               <div className="skeleton-lines">
                 {[100, 80, 90, 60, 85, 70].map((w, i) => (
                   <div key={i} className="skeleton-line" style={{ width: `${w}%` }} />

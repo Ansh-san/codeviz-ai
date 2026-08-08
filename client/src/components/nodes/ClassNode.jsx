@@ -1,10 +1,13 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Box, GitBranch, Layers } from 'lucide-react';
+import { Box, GitBranch, Layers, ChevronDown, ChevronRight } from 'lucide-react';
 
-const ClassNode = memo(({ data, selected }) => {
+const ClassNode = memo(({ data, selected, id }) => {
   const isInterface = data.nodeType === 'interface';
   const isEnum = data.nodeType === 'enum';
+  const isGroupParent = data.isGroupParent;
+  const isCollapsed = data.isCollapsed;
+  const childCount = data.childCount || 0;
 
   const getTypeIcon = () => {
     if (isInterface) return <GitBranch size={13} />;
@@ -18,11 +21,28 @@ const ClassNode = memo(({ data, selected }) => {
     return 'class';
   };
 
+  const handleToggle = useCallback((e) => {
+    e.stopPropagation();
+    if (data.onToggleCollapse) {
+      data.onToggleCollapse(id);
+    }
+  }, [data, id]);
+
   return (
-    <div className={`cls-node ${selected ? 'cls-node--selected' : ''} ${isInterface ? 'cls-node--interface' : ''} ${isEnum ? 'cls-node--enum' : ''}`}>
+    <div className={`cls-node ${selected ? 'cls-node--selected' : ''} ${isInterface ? 'cls-node--interface' : ''} ${isEnum ? 'cls-node--enum' : ''} ${isGroupParent ? 'cls-node--group' : ''} ${isCollapsed ? 'cls-node--collapsed' : ''}`}>
       <Handle type="target" position={Position.Top} className="node-handle node-handle--target" />
 
       <div className="cls-node__header">
+        {childCount > 0 && (
+          <button
+            className="cls-node__toggle"
+            onClick={handleToggle}
+            title={isCollapsed ? 'Expand children' : 'Collapse children'}
+            id={`toggle-${id}`}
+          >
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
         <div className="cls-node__icon">{getTypeIcon()}</div>
         <span className="cls-node__type-badge">{getTypeLabel()}</span>
         {data.methodCount > 0 && (
@@ -43,6 +63,12 @@ const ClassNode = memo(({ data, selected }) => {
       {data.implementsList && data.implementsList.length > 0 && (
         <div className="cls-node__implements">
           implements {data.implementsList.join(', ')}
+        </div>
+      )}
+
+      {isCollapsed && childCount > 0 && (
+        <div className="cls-node__collapsed-badge">
+          {childCount} {childCount === 1 ? 'member' : 'members'} hidden
         </div>
       )}
 

@@ -14,6 +14,7 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [parseStats, setParseStats] = useState(null);
+  const [analysisMode, setAnalysisMode] = useState('tech');
 
   const { parse, loading: parseLoading, error: parseError } = useParser();
   const { analyze, loading: analyzeLoading, error: analyzeError, analysis, isMock, clearAnalysis } = useAnalyzer();
@@ -33,14 +34,31 @@ export default function App() {
     setSelectedNode(node);
     setIsPanelOpen(true);
     clearAnalysis();
-    // Auto-trigger analysis on click
+    // Auto-trigger analysis on click with current mode
     await analyze(
       node.data.code || `// ${node.data.label}`,
       node.data.label,
       node.data.nodeType,
-      node.data.language || language
+      node.data.language || language,
+      analysisMode
     );
-  }, [analyze, clearAnalysis, language]);
+  }, [analyze, clearAnalysis, language, analysisMode]);
+
+  const handleModeChange = useCallback(async (newMode) => {
+    if (newMode === analysisMode) return;
+    setAnalysisMode(newMode);
+    clearAnalysis();
+    // Re-trigger analysis with new mode if a node is selected
+    if (selectedNode) {
+      await analyze(
+        selectedNode.data.code || `// ${selectedNode.data.label}`,
+        selectedNode.data.label,
+        selectedNode.data.nodeType,
+        selectedNode.data.language || language,
+        newMode
+      );
+    }
+  }, [analysisMode, selectedNode, analyze, clearAnalysis, language]);
 
   const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false);
@@ -142,6 +160,8 @@ export default function App() {
             loading={analyzeLoading}
             error={analyzeError}
             isMock={isMock}
+            analysisMode={analysisMode}
+            onModeChange={handleModeChange}
           />
         </aside>
       </main>

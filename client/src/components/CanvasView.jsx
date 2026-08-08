@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -12,7 +12,7 @@ import 'reactflow/dist/style.css';
 import FunctionNode from './nodes/FunctionNode';
 import ClassNode from './nodes/ClassNode';
 import { getLayoutedElements } from '../utils/layoutGraph';
-import { GitBranch, LayoutGrid, Maximize2 } from 'lucide-react';
+import { GitBranch, LayoutGrid } from 'lucide-react';
 
 const nodeTypes = {
   functionNode: FunctionNode,
@@ -24,20 +24,78 @@ const edgeOptions = {
   style: { stroke: '#475569', strokeWidth: 1.5 }
 };
 
-export default function CanvasView({ graphData, onNodeClick, selectedNodeId, onReLayout }) {
+export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [collapsedIds, setCollapsedIds] = useState(new Set());
+  const [hoveredNodeId, setHoveredNodeId] = useState(null);
+
+  // Store raw graph data so we can re-layout on collapse toggle
+  const rawDataRef = useMemo(() => ({ nodes: [], edges: [] }), []);
+
+  // Toggle collapse handler — passed down into ClassNode data
+  const handleToggleCollapse = useCallback((classNodeId) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(classNodeId)) {
+        next.delete(classNodeId);
+      } else {
+        next.add(classNodeId);
+      }
+
+      // Re-layout with the updated collapsed set
+      const { nodes: ln, edges: le } = getLayoutedElements(
+        rawDataRef.nodes,
+        rawDataRef.edges,
+        'TB',
+        next
+      );
+
+      // Inject the toggle callback into class nodes
+      const nodesWithCallbacks = ln.map(n => ({
+        ...n,
+        className: selectedNodeId === n.id ? 'selected-node' : '',
+        data: n.type === 'classNode'
+          ? { ...n.data, onToggleCollapse: handleToggleCollapse }
+          : n.data
+      }));
+
+      // Use setTimeout to avoid React state-update-during-render warnings
+      setTimeout(() => {
+        setNodes(nodesWithCallbacks);
+        setEdges(le);
+      }, 0);
+
+      return next;
+    });
+  }, [rawDataRef, selectedNodeId, setNodes, setEdges]);
 
   // Apply new graph data when it changes
   const prevDataRef = useMemo(() => ({ data: null }), []);
   if (graphData && graphData !== prevDataRef.data) {
     prevDataRef.data = graphData;
-    const { nodes: ln, edges: le } = getLayoutedElements(graphData.nodes, graphData.edges);
-    // Use setTimeout to avoid React render-cycle warnings
+
+    // Store raw data for re-layout on collapse
+    rawDataRef.nodes = graphData.nodes;
+    rawDataRef.edges = graphData.edges;
+
+    // Reset collapsed state on new parse
+    setCollapsedIds(new Set());
+
+    const { nodes: ln, edges: le } = getLayoutedElements(
+      graphData.nodes,
+      graphData.edges,
+      'TB',
+      new Set()
+    );
+
     setTimeout(() => {
       setNodes(ln.map(n => ({
         ...n,
-        className: selectedNodeId === n.id ? 'selected-node' : ''
+        className: selectedNodeId === n.id ? 'selected-node' : '',
+        data: n.type === 'classNode'
+          ? { ...n.data, onToggleCollapse: handleToggleCollapse }
+          : n.data
       })));
       setEdges(le);
     }, 0);
@@ -57,11 +115,110 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId, onR
   }, [onNodeClick, setNodes]);
 
   const handleReLayout = useCallback(() => {
-    setNodes(nds => {
-      const { nodes: ln } = getLayoutedElements(nds, edges);
-      return ln;
+    const { nodes: ln, edges: le } = getLayoutedElements(
+      rawDataRef.nodes,
+      rawDataRef.edges,
+      'TB',
+      collapsedIds
+    );
+
+    setNodes(ln.map(n => ({
+      ...n,
+      className: selectedNodeId === n.id ? 'selected-node' : '',
+      data: n.type === 'classNode'
+        ? { ...n.data, onToggleCollapse: handleToggleCollapse }
+        : n.data
+    })));
+    setEdges(le);
+  }, [rawDataRef, collapsedIds, selectedNodeId, handleToggleCollapse, setNodes, setEdges]);
+
+  // ── Hover highlighting logic ──────────────────────────────────────────
+
+  /**
+   * Given a nodeId and current edges, return the set of directly connected node IDs
+   * (including the hovered node itself).
+   */
+  const getConnectedIds = useCallback((nodeId, currentEdges) => {
+    const connected = new Set([nodeId]);
+    currentEdges.forEach(edge => {
+      if (edge.source === nodeId) connected.add(edge.target);
+      if (edge.target === nodeId) connected.add(edge.source);
     });
-  }, [edges]);
+    return connected;
+  }, []);
+
+  const handleNodeMouseEnter = useCallback((_event, node) => {
+    setHoveredNodeId(node.id);
+  }, []);
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setHoveredNodeId(null);
+  }, []);
+
+  // Compute highlighted nodes and styled edges based on hover state
+  const { displayNodes, displayEdges } = useMemo(() => {
+    if (!hoveredNodeId) {
+      return { displayNodes: nodes, displayEdges: edges };
+    }
+
+    const connectedIds = getConnectedIds(hoveredNodeId, edges);
+
+    const displayNodes = nodes.map(node => {
+      const isConnected = connectedIds.has(node.id);
+      const isHovered = node.id === hoveredNodeId;
+
+      // Build className: preserve existing classes, add hover state
+      const existingClass = node.className || '';
+      const hoverClass = isHovered
+        ? 'node--hovered'
+        : isConnected
+          ? 'node--connected'
+          : 'node--dimmed';
+
+      return {
+        ...node,
+        className: `${existingClass} ${hoverClass}`.trim()
+      };
+    });
+
+    const displayEdges = edges.map(edge => {
+      const isActiveEdge =
+        (edge.source === hoveredNodeId || edge.target === hoveredNodeId);
+
+      if (isActiveEdge) {
+        // Determine accent color based on edge type
+        let accentColor = '#67e8f9'; // cyan-light default
+        if (edge.data?.edgeType === 'call') accentColor = '#fbbf24'; // amber
+        if (edge.data?.edgeType === 'inheritance') accentColor = '#a78bfa'; // violet
+
+        return {
+          ...edge,
+          animated: true,
+          className: 'edge--highlighted',
+          style: {
+            ...edge.style,
+            stroke: accentColor,
+            strokeWidth: 3,
+            opacity: 1
+          },
+          markerEnd: edge.markerEnd
+            ? { ...edge.markerEnd, color: accentColor }
+            : edge.markerEnd
+        };
+      }
+
+      return {
+        ...edge,
+        className: 'edge--dimmed',
+        style: {
+          ...edge.style,
+          opacity: 0.12
+        }
+      };
+    });
+
+    return { displayNodes, displayEdges };
+  }, [hoveredNodeId, nodes, edges, getConnectedIds]);
 
   const isEmpty = nodes.length === 0;
 
@@ -72,7 +229,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId, onR
         <div className="canvas-toolbar__left">
           <GitBranch size={14} className="canvas-toolbar__icon" />
           <span className="canvas-toolbar__label">
-            {isEmpty ? 'Parse code to generate graph' : `${nodes.length} nodes · ${edges.length} edges`}
+            {isEmpty ? 'Parse code to generate graph' : `${nodes.filter(n => !n.hidden).length} nodes · ${edges.length} edges`}
           </span>
         </div>
         <div className="canvas-toolbar__right">
@@ -94,12 +251,14 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId, onR
 
       {/* React Flow Canvas */}
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={displayNodes}
+        edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={handleNodeClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={edgeOptions}
         fitView
