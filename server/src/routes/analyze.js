@@ -27,7 +27,7 @@ router.post('/', async (req, res) => {
     console.log(`[Analyze] Node: "${nodeLabel}" (${nodeType}), Language: ${language}, Mode: ${analysisMode}`);
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
     const prompt = analysisMode === 'layman'
       ? buildLaymanPrompt(code, nodeLabel, nodeType, language)
