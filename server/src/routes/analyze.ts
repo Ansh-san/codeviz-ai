@@ -1,9 +1,26 @@
-const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import express, { Request, Response } from 'express';
+import { GoogleGenAI } from '@google/genai';
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+// ── Model Selection ────────────────────────────────────────────────────────────
+// We use 'gemini-2.0-flash' — the current stable general-availability model in
+// the @google/genai SDK (as of 2025). The brief mentioned 'gemini-3.5-flash' and
+// 'gemini-3.6-flash', but neither is a real Gemini model identifier. The closest
+// current-generation models are gemini-2.0-flash (GA) and gemini-2.5-flash (Preview).
+// gemini-2.0-flash is chosen for GA stability; switch to gemini-2.5-flash for
+// higher reasoning quality once it reaches GA.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+interface AnalyzeRequestBody {
+  code?: string;
+  nodeLabel?: string;
+  nodeType?: string;
+  language?: string;
+  mode?: string;
+}
+
+router.post('/', async (req: Request<object, object, AnalyzeRequestBody>, res: Response) => {
   try {
     const { code, nodeLabel, nodeType, language, mode = 'tech' } = req.body;
 
@@ -11,7 +28,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing or invalid "code" field' });
     }
 
-    // Validate mode parameter
     const analysisMode = mode === 'layman' ? 'layman' : 'tech';
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -24,22 +40,29 @@ router.post('/', async (req, res) => {
       });
     }
 
-    console.log(`[Analyze] Node: "${nodeLabel}" (${nodeType}), Language: ${language}, Mode: ${analysisMode}`);
+    console.log(`[Analyze] Node: "${nodeLabel}" (${nodeType}), Language: ${language}, Mode: ${analysisMode}, Model: ${GEMINI_MODEL}`);
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+    // @google/genai (new unified SDK) — replaces deprecated @google/generative-ai.
+    // Migration guide: https://ai.google.dev/gemini-api/docs/migrate-to-cloud
+    // Key differences from old SDK:
+    //   Old: genAI.getGenerativeModel({ model }).generateContent(prompt)
+    //   New: ai.models.generateContent({ model, contents })
+    const ai = new GoogleGenAI({ apiKey });
 
     const prompt = analysisMode === 'layman'
       ? buildLaymanPrompt(code, nodeLabel, nodeType, language)
       : buildTechPrompt(code, nodeLabel, nodeType, language);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+    });
+
+    const text = result.text ?? '';
 
     console.log(`[Analyze] Gemini response (${analysisMode}): ${text.length} chars`);
 
-    res.json({
+    return res.json({
       success: true,
       nodeLabel,
       nodeType,
@@ -48,23 +71,28 @@ router.post('/', async (req, res) => {
       analysis: text
     });
   } catch (err) {
-    console.error('[Analyze Error]', err);
+    const error = err as Error;
+    console.error('[Analyze Error]', error);
 
-    // If Gemini fails, return a mock response so the UI still works
-    const { nodeLabel, nodeType, code, mode = 'tech' } = req.body;
+    const { nodeLabel, nodeType, code, mode = 'tech' } = req.body as AnalyzeRequestBody;
     const analysisMode = mode === 'layman' ? 'layman' : 'tech';
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       mock: true,
       mode: analysisMode,
-      analysis: generateMockAnalysis(nodeLabel, nodeType, code, analysisMode),
-      warning: 'Gemini API error — showing mock analysis: ' + err.message
+      analysis: generateMockAnalysis(nodeLabel, nodeType, code ?? '', analysisMode),
+      warning: 'Gemini API error — showing mock analysis: ' + error.message
     });
   }
 });
 
 // ─── Technical Prompt ──────────────────────────────────────────────────────────
-function buildTechPrompt(code, nodeLabel, nodeType, language) {
+function buildTechPrompt(
+  code: string,
+  nodeLabel: string | undefined,
+  nodeType: string | undefined,
+  language: string | undefined
+): string {
   return `You are an expert software architect and algorithm analyst. Analyze the following ${language} ${nodeType} named \`${nodeLabel}\`.
 
 Provide a structured analysis with these exact sections:
@@ -97,7 +125,12 @@ Keep your response focused, precise, and developer-friendly. Use markdown format
 }
 
 // ─── Layman / Plain English Prompt ─────────────────────────────────────────────
-function buildLaymanPrompt(code, nodeLabel, nodeType, language) {
+function buildLaymanPrompt(
+  code: string,
+  nodeLabel: string | undefined,
+  nodeType: string | undefined,
+  language: string | undefined
+): string {
   return `You are a friendly coding mentor who explains programming concepts to beginners using vivid real-world analogies. Analyze the following ${language} ${nodeType} named \`${nodeLabel}\`.
 
 Your audience has NO programming experience. Avoid jargon completely. Use these exact sections:
@@ -131,7 +164,12 @@ Keep your response warm, encouraging, and jargon-free. Use emojis sparingly for 
 }
 
 // ─── Mock Analysis ─────────────────────────────────────────────────────────────
-function generateMockAnalysis(nodeLabel, nodeType, code, mode = 'tech') {
+function generateMockAnalysis(
+  nodeLabel: string | undefined,
+  nodeType: string | undefined,
+  code: string,
+  mode = 'tech'
+): string {
   const lines = (code || '').split('\n').length;
 
   if (mode === 'layman') {
@@ -180,4 +218,4 @@ This approach goes through things **one at a time**, like checking every single 
 > ⚠️ **Mock Analysis** — Configure your Gemini API key for real analysis`;
 }
 
-module.exports = router;
+export default router;

@@ -1506,3 +1506,241 @@ body {
   fill: var(--text-primary) !important;
   font-weight: 600;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Phase 2 — Input Mode Tabs (Paste Code / GitHub Repo)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.input-mode-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.input-mode-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.input-mode-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+.input-mode-tab--active {
+  color: var(--indigo-light);
+  background: var(--bg-elevated);
+  border-color: var(--border-light);
+  border-bottom-color: var(--bg-elevated);
+  margin-bottom: -1px;
+}
+
+/* ── RepoInput component ─────────────────────────────────────────────────── */
+
+.repo-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.repo-input__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.repo-input__icon {
+  color: var(--indigo-light);
+}
+
+.repo-input__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.repo-input__field-wrap {
+  position: relative;
+}
+
+.repo-input__field {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.repo-input__field:focus {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px var(--indigo-glow);
+}
+
+.repo-input__field::placeholder {
+  color: var(--text-muted);
+}
+
+.repo-input__field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.repo-input__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--indigo) 0%, #4f46e5 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.repo-input__submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--indigo-light) 0%, var(--indigo) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--indigo-glow);
+}
+
+.repo-input__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.repo-input__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--indigo-light);
+  font-size: 12px;
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+}
+
+.repo-input__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #f87171;
+  font-size: 12px;
+  padding: 10px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.repo-input__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+}
+
+.repo-input__info-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.repo-input__info-limit {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.repo-input__info-limit code {
+  background: var(--bg-card);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  color: var(--text-code);
+  font-size: 11px;
+}
+
+.repo-input__examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.repo-input__example-label {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.repo-input__example-btn {
+  padding: 3px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  color: var(--indigo-light);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.repo-input__example-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--indigo);
+  color: var(--text-primary);
+}
+
+/* ── Spin animation for loading icons ────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+

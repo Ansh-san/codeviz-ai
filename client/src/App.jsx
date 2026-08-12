@@ -3,11 +3,16 @@ import { ReactFlowProvider } from 'reactflow';
 import CodeEditor from './components/CodeEditor';
 import CanvasView from './components/CanvasView';
 import AIPanel from './components/AIPanel';
+import RepoInput from './components/RepoInput';
 import { useParser } from './hooks/useParser';
 import { useAnalyzer } from './hooks/useAnalyzer';
-import { Cpu, Sparkles, Activity, AlertCircle, Bot } from 'lucide-react';
+import { useRepoAnalyzer } from './hooks/useRepoAnalyzer';
+import { Cpu, Sparkles, Activity, AlertCircle, Bot, Code2, Github } from 'lucide-react';
 
 export default function App() {
+  // ── Input mode: 'paste' (single-file) or 'repo' (GitHub) ─────────────────
+  const [inputMode, setInputMode] = useState('paste');
+
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('python');
   const [graphData, setGraphData] = useState(null);
@@ -15,9 +20,13 @@ export default function App() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [parseStats, setParseStats] = useState(null);
   const [analysisMode, setAnalysisMode] = useState('tech');
+  const [repoMeta, setRepoMeta] = useState(null);
 
   const { parse, loading: parseLoading, error: parseError } = useParser();
   const { analyze, loading: analyzeLoading, error: analyzeError, analysis, isMock, clearAnalysis } = useAnalyzer();
+  const { analyzeRepo, loading: repoLoading, error: repoError, progress: repoProgress, clearResult: clearRepo } = useRepoAnalyzer();
+
+  // ── Paste-code flow ────────────────────────────────────────────────────────
 
   const handleParse = useCallback(async () => {
     const result = await parse(code, language);
@@ -26,15 +35,31 @@ export default function App() {
       setParseStats(result.stats);
       setSelectedNode(null);
       setIsPanelOpen(false);
+      setRepoMeta(null);
       clearAnalysis();
     }
   }, [code, language, parse, clearAnalysis]);
+
+  // ── Repo analysis flow ─────────────────────────────────────────────────────
+
+  const handleAnalyzeRepo = useCallback(async (repoUrl) => {
+    const result = await analyzeRepo(repoUrl);
+    if (result) {
+      setGraphData(result);
+      setParseStats(result.stats);
+      setRepoMeta(result.repoMeta);
+      setSelectedNode(null);
+      setIsPanelOpen(false);
+      clearAnalysis();
+    }
+  }, [analyzeRepo, clearAnalysis]);
+
+  // ── Node click → AI Inspector ──────────────────────────────────────────────
 
   const handleNodeClick = useCallback(async (node) => {
     setSelectedNode(node);
     setIsPanelOpen(true);
     clearAnalysis();
-    // Auto-trigger analysis on click with current mode
     await analyze(
       node.data.code || `// ${node.data.label}`,
       node.data.label,
@@ -48,7 +73,6 @@ export default function App() {
     if (newMode === analysisMode) return;
     setAnalysisMode(newMode);
     clearAnalysis();
-    // Re-trigger analysis with new mode if a node is selected
     if (selectedNode) {
       await analyze(
         selectedNode.data.code || `// ${selectedNode.data.label}`,
@@ -71,10 +95,28 @@ export default function App() {
     setCode('');
     setGraphData(null);
     setParseStats(null);
+    setRepoMeta(null);
     clearAnalysis();
     setSelectedNode(null);
     setIsPanelOpen(false);
   }, [clearAnalysis]);
+
+  // ── Mode tab switch ────────────────────────────────────────────────────────
+
+  const handleModeSwitch = useCallback((mode) => {
+    setInputMode(mode);
+    // Clear graph when switching modes so stale data isn't confusing
+    setGraphData(null);
+    setParseStats(null);
+    setRepoMeta(null);
+    setSelectedNode(null);
+    setIsPanelOpen(false);
+    clearAnalysis();
+    clearRepo();
+  }, [clearAnalysis, clearRepo]);
+
+  const activeError = inputMode === 'paste' ? parseError : repoError;
+  const activeLoading = inputMode === 'paste' ? parseLoading : repoLoading;
 
   return (
     <div className="app">
@@ -102,16 +144,24 @@ export default function App() {
                 <Activity size={11} />
                 {parseStats.edges} edges
               </span>
-              <span className="stat-chip stat-chip--lang">{language}</span>
+              {repoMeta ? (
+                <span className="stat-chip stat-chip--lang">
+                  <Github size={11} />
+                  {repoMeta.repo}
+                  {repoMeta.cached && <span title="Cached result"> (cached)</span>}
+                </span>
+              ) : (
+                <span className="stat-chip stat-chip--lang">{language}</span>
+              )}
             </div>
           )}
         </div>
 
         <div className="topbar__actions">
-          {parseError && (
+          {activeError && (
             <div className="topbar__error-pill">
               <AlertCircle size={13} />
-              <span>{parseError}</span>
+              <span>{activeError}</span>
             </div>
           )}
           <div className="topbar__ai-indicator">
@@ -124,16 +174,47 @@ export default function App() {
 
       {/* Main Layout */}
       <main className="main-layout" role="main">
-        {/* Left Panel: Code Editor */}
-        <aside className="left-panel" aria-label="Code Editor">
-          <CodeEditor
-            code={code}
-            language={language}
-            onCodeChange={setCode}
-            onLanguageChange={handleLanguageChange}
-            onParse={handleParse}
-            loading={parseLoading}
-          />
+        {/* Left Panel: Code Editor OR Repo Input */}
+        <aside className="left-panel" aria-label="Input Panel">
+          {/* Mode tabs */}
+          <div className="input-mode-tabs">
+            <button
+              className={`input-mode-tab ${inputMode === 'paste' ? 'input-mode-tab--active' : ''}`}
+              onClick={() => handleModeSwitch('paste')}
+              id="tab-paste"
+              title="Paste code and visualize"
+            >
+              <Code2 size={13} />
+              <span>Paste Code</span>
+            </button>
+            <button
+              className={`input-mode-tab ${inputMode === 'repo' ? 'input-mode-tab--active' : ''}`}
+              onClick={() => handleModeSwitch('repo')}
+              id="tab-repo"
+              title="Analyze a GitHub repository"
+            >
+              <Github size={13} />
+              <span>GitHub Repo</span>
+            </button>
+          </div>
+
+          {inputMode === 'paste' ? (
+            <CodeEditor
+              code={code}
+              language={language}
+              onCodeChange={setCode}
+              onLanguageChange={handleLanguageChange}
+              onParse={handleParse}
+              loading={parseLoading}
+            />
+          ) : (
+            <RepoInput
+              onAnalyze={handleAnalyzeRepo}
+              loading={repoLoading}
+              error={repoError}
+              progress={repoProgress}
+            />
+          )}
         </aside>
 
         {/* Center: Canvas */}
