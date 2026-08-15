@@ -7,7 +7,8 @@ import RepoInput from './components/RepoInput';
 import { useParser } from './hooks/useParser';
 import { useAnalyzer } from './hooks/useAnalyzer';
 import { useRepoAnalyzer } from './hooks/useRepoAnalyzer';
-import { Cpu, Sparkles, Activity, AlertCircle, Bot, Code2, Github } from 'lucide-react';
+import { Cpu, Sparkles, Activity, AlertCircle, Bot, Code2 } from 'lucide-react';
+import { FaGithub } from 'react-icons/fa';
 
 export default function App() {
   // ── Input mode: 'paste' (single-file) or 'repo' (GitHub) ─────────────────
@@ -146,7 +147,7 @@ export default function App() {
               </span>
               {repoMeta ? (
                 <span className="stat-chip stat-chip--lang">
-                  <Github size={11} />
+                  <FaGithub size={11} />
                   {repoMeta.repo}
                   {repoMeta.cached && <span title="Cached result"> (cached)</span>}
                 </span>
@@ -193,7 +194,7 @@ export default function App() {
               id="tab-repo"
               title="Analyze a GitHub repository"
             >
-              <Github size={13} />
+              <FaGithub size={13} />
               <span>GitHub Repo</span>
             </button>
           </div>

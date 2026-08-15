@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Github, Search, AlertTriangle, Loader2, PackageCheck } from 'lucide-react';
+import { Search, AlertTriangle, Loader2, PackageCheck } from 'lucide-react';
+import { FaGithub } from 'react-icons/fa';
 
 export default function RepoInput({ onAnalyze, loading, error, progress }) {
   const [url, setUrl] = useState('');
@@ -20,7 +21,7 @@ export default function RepoInput({ onAnalyze, loading, error, progress }) {
     <div className="repo-input">
       {/* Header */}
       <div className="repo-input__header">
-        <Github size={16} className="repo-input__icon" />
+        <FaGithub size={16} className="repo-input__icon" />
         <span>Analyze GitHub Repo</span>
       </div>
 
