@@ -27,6 +27,11 @@ const FunctionNode = memo(({ data, selected }) => {
           {isImport ? <Zap size={12} /> : <Code2 size={12} />}
         </div>
         <span className={`fn-node__badge ${getBadgeColor()}`}>{getBadgeLabel()}</span>
+        {data.isRecursive && (
+          <span className="fn-node__badge fn-node__badge--recursive" title="Function calls itself (self-loop)">
+            <span className="recursive-icon">↺</span> recursive
+          </span>
+        )}
       </div>
 
       <div className="fn-node__title" title={data.label}>

@@ -289,12 +289,11 @@ class Solution:
     expect(parentToDfs).toBeDefined();
   });
 
-  it('emits a recursive-call self-loop edge on dfs', () => {
+  it('flags the dfs node as recursive instead of emitting a recursive-call edge', () => {
     const r = parsePython(code);
-    const recursiveEdges = getEdgesByType(r, 'recursive-call');
-    expect(recursiveEdges.length).toBeGreaterThanOrEqual(1);
-    // The self-loop must have source === target
-    recursiveEdges.forEach(e => expect(e.source).toBe(e.target));
+    const dfsNode = r.nodes.find(n => n.data.label === 'dfs');
+    expect(dfsNode).toBeDefined();
+    expect(dfsNode.data.isRecursive).toBe(true);
   });
 
   it('dfs node has containingParent set to allPathsSourceTarget node id', () => {
@@ -338,9 +337,9 @@ def main(data):
     expect(edge).toBeDefined();
   });
 
-  it('does not emit a recursive-call edge for these functions', () => {
+  it('does not flag these functions as recursive', () => {
     const r = parsePython(code);
-    expect(getEdgesByType(r, 'recursive-call')).toHaveLength(0);
+    expect(r.nodes.some(n => n.data.isRecursive)).toBe(false);
   });
 });
 

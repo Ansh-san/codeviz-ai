@@ -44,6 +44,7 @@ export interface FunctionNodeData extends BaseNodeData {
   containingClass?: string | null;
   /** Set when this function is nested inside another function (not a class method). */
   containingParent?: string | null;
+  isRecursive?: boolean;
 }
 
 export type NodeData = ClassNodeData | FunctionNodeData;

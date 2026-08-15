@@ -427,17 +427,11 @@ export function parsePython(code: string): ParseResult {
       seen.add(callee);
 
       if (callee === callerName || calleeId === callerId) {
-        // Direct recursion — emit a self-loop edge
-        edges.push({
-          id: `edge_${callerId}_${callerId}_recursive`,
-          source: callerId,
-          target: callerId,
-          type: 'self-loop',
-          label: '↺ recursive',
-          animated: true,
-          style: { strokeDasharray: '5 3', stroke: '#fbbf24' },
-          data: { edgeType: 'recursive-call' }
-        });
+        // Direct recursion — set isRecursive flag on the node instead of an edge
+        const node = nodes.find(n => n.id === callerId);
+        if (node) {
+          node.data.isRecursive = true;
+        }
       } else {
         edges.push({
           id: `edge_${callerId}_${calleeId}_call`,

@@ -799,6 +799,13 @@ body {
 .badge-method   { color: var(--cyan);         background: rgba(6, 182, 212, 0.12); }
 .badge-import   { color: var(--violet);       background: rgba(139, 92, 246, 0.12); }
 
+.fn-node__badge--recursive {
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.12);
+  margin-left: auto;
+}
+.recursive-icon { font-weight: 800; font-size: 10px; margin-right: 2px; }
+
 .fn-node__title {
   font-size: 13px;
   font-weight: 600;

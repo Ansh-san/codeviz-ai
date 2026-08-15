@@ -21,12 +21,7 @@ const EDGE_TYPE_META = {
     dash: false,
     desc: 'Function calls another function'
   },
-  'recursive-call': {
-    label: 'Recursive call',
-    color: '#f59e0b',
-    dash: true,
-    desc: 'Function calls itself (self-loop)'
-  },
+
   'inheritance': {
     label: 'Inherits',
     color: '#8b5cf6',
@@ -59,7 +54,7 @@ const EDGE_TYPE_META = {
   }
 };
 
-export default function EdgeLegend({ edges }) {
+export default function EdgeLegend({ edges, nodes }) {
   const [collapsed, setCollapsed] = useState(false);
 
   // Derive the set of edge types actually in the current graph
@@ -71,7 +66,11 @@ export default function EdgeLegend({ edges }) {
     return types;
   }, [edges]);
 
-  if (presentTypes.size === 0) return null;
+  const hasRecursive = useMemo(() => {
+    return nodes?.some(n => n.data?.isRecursive) || false;
+  }, [nodes]);
+
+  if (presentTypes.size === 0 && !hasRecursive) return null;
 
   return (
     <div className="edge-legend" role="complementary" aria-label="Edge type legend">
@@ -106,6 +105,13 @@ export default function EdgeLegend({ edges }) {
               </li>
             );
           })}
+          {hasRecursive && (
+            <li key="recursive-badge" className="edge-legend__item" title="Function calls itself (self-loop)">
+              <span className="fn-node__badge fn-node__badge--recursive" style={{ display: 'inline-block', margin: '0 8px 0 0', transform: 'scale(0.9)', transformOrigin: 'left' }}>
+                <span className="recursive-icon">↺</span> recursive
+              </span>
+            </li>
+          )}
         </ul>
       )}
     </div>

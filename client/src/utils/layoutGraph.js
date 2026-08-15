@@ -9,10 +9,10 @@ const NODE_WIDTH = 220;
 const NODE_HEIGHT = 120;
 const CLASS_BASE_WIDTH = 280;
 const CLASS_BASE_HEIGHT = 200;
-const CHILD_PADDING_TOP = 60;
+const CHILD_PADDING_TOP = 75; // Increased to clear FunctionNode headers
 const CHILD_PADDING_X = 16;
-const CHILD_SPACING_Y = 12;
-const CHILD_NODE_HEIGHT = 100;
+const CHILD_SPACING_Y = 16; // Increased spacing
+const CHILD_NODE_HEIGHT = 130; // Increased to match .fn-node min-height + padding
 
 /**
  * Build a map of childNodeId → parentClassNodeId
@@ -214,7 +214,7 @@ export function getLayoutedElements(nodes, edges, direction = 'TB', collapsedIds
       ...node,
       parentNode: parentId,
       extent: 'parent',
-      expandParent: false,
+      expandParent: true,
       draggable: true,
       hidden: false,
       position: {
