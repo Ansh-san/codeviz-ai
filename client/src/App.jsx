@@ -33,7 +33,12 @@ export default function App() {
     const result = await parse(code, language);
     if (result) {
       setGraphData(result);
-      setParseStats(result.stats);
+      // Derive stats from the actual arrays, not result.stats, so the topbar
+      // count matches the canvas count (canvas hides membership edges in layout).
+      setParseStats({
+        nodes: result.nodes.length,
+        edges: result.edges.filter(e => e.data?.edgeType !== 'membership').length
+      });
       setSelectedNode(null);
       setIsPanelOpen(false);
       setRepoMeta(null);
@@ -47,7 +52,11 @@ export default function App() {
     const result = await analyzeRepo(repoUrl);
     if (result) {
       setGraphData(result);
-      setParseStats(result.stats);
+      // Same single source of truth: count from actual arrays, membership edges excluded.
+      setParseStats({
+        nodes: result.nodes.length,
+        edges: result.edges.filter(e => e.data?.edgeType !== 'membership').length
+      });
       setRepoMeta(result.repoMeta);
       setSelectedNode(null);
       setIsPanelOpen(false);

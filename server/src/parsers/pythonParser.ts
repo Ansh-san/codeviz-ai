@@ -114,11 +114,15 @@ function extractDocstring(blockNode: TSNode | null, code: string): string | null
 
 /**
  * Collect all call names (identifiers immediately followed by a call) within
- * the given tree-sitter node. Returns a Set<string>.
+ * the given tree-sitter node, NOT descending into nested function bodies.
+ * `nestedBodies` is a Set of tree-sitter nodes representing nested function
+ * bodies that should be treated as opaque scopes.
  */
-function collectCallees(tsNode: TSNode, code: string): Set<string> {
+function collectCallees(tsNode: TSNode, code: string, nestedBodies: Set<TSNode> = new Set()): Set<string> {
   const callees = new Set<string>();
-  walk(tsNode, child => {
+  walk(tsNode, (child, _depth): boolean | void => {
+    // Don't descend into nested function body scopes
+    if (nestedBodies.has(child)) return false;
     if (child.type === 'call') {
       const funcChild = child.namedChildren.find(
         (c: TSNode) => c.fieldName === 'function' || c === child.namedChildren[0]
@@ -134,6 +138,7 @@ function collectCallees(tsNode: TSNode, code: string): Set<string> {
         }
       }
     }
+    return undefined;
   });
   return callees;
 }
@@ -238,10 +243,20 @@ export function parsePython(code: string): ParseResult {
   // Strategy:
   //   - Top-level functions: direct children of the module root
   //   - Methods: direct children of a class body block
-  //   - Nested functions (inside another function body) are SKIPPED so they
-  //     don't pollute the top-level graph.
+  //   - Nested functions (inside another function body): emitted as their own
+  //     functionNode with a membership edge from the parent function node.
+  //     Only one level of nesting is captured (inner-inner functions are skipped
+  //     to avoid graph explosion on deeply recursive closures).
 
-  function extractFunctionNode(fnNode: TSNode, containingClass: string | null): void {
+  // nodeAstBodyMap stores the *body block* TSNode for each fn nodeId
+  // so we can build the nestedBodies set when computing call edges.
+  const nodeAstBodyMap: Record<string, TSNode> = {};
+
+  function extractFunctionNode(
+    fnNode: TSNode,
+    containingClass: string | null,
+    containingParentId: string | null   // nodeId of the enclosing function, if nested
+  ): void {
     let actualFn = fnNode;
     let decoratorNames: string[] = [];
     if (fnNode.type === 'decorated_definition') {
@@ -293,6 +308,7 @@ export function parsePython(code: string): ParseResult {
         label: funcName,
         nodeType: nodeType as 'method' | 'function',
         containingClass: containingClass || null,
+        containingParent: containingParentId || null,
         params: paramList,
         returnType,
         isAsync,
@@ -306,7 +322,9 @@ export function parsePython(code: string): ParseResult {
     });
 
     nodeAstMap[nodeId] = actualFn;
+    if (bodyNode) nodeAstBodyMap[nodeId] = bodyNode;
 
+    // Membership edge: class → method
     if (containingClass && classMap[containingClass]) {
       edges.push({
         id: `edge_${classMap[containingClass]}_${nodeId}_member`,
@@ -319,6 +337,33 @@ export function parsePython(code: string): ParseResult {
         data: { edgeType: 'membership' }
       });
     }
+
+    // Membership edge: parent function → nested function
+    if (containingParentId) {
+      edges.push({
+        id: `edge_${containingParentId}_${nodeId}_nested`,
+        source: containingParentId,
+        target: nodeId,
+        label: 'contains',
+        type: 'smoothstep',
+        style: { stroke: '#06b6d4', strokeWidth: 1.5, strokeDasharray: '4 2' },
+        markerEnd: { type: 'ArrowClosed', color: '#06b6d4' },
+        data: { edgeType: 'membership' }
+      });
+    }
+
+    // ── Emit direct nested function definitions (one level deep) ──────────────
+    if (bodyNode) {
+      for (const stmt of bodyNode.namedChildren) {
+        if (
+          stmt.type === 'function_definition' ||
+          stmt.type === 'async_function_definition' ||
+          stmt.type === 'decorated_definition'
+        ) {
+          extractFunctionNode(stmt, containingClass, nodeId);
+        }
+      }
+    }
   }
 
   // Top-level functions
@@ -328,7 +373,7 @@ export function parsePython(code: string): ParseResult {
       child.type === 'async_function_definition' ||
       child.type === 'decorated_definition'
     ) {
-      extractFunctionNode(child, null);
+      extractFunctionNode(child, null, null);
     }
 
     // Methods inside top-level classes
@@ -344,24 +389,57 @@ export function parsePython(code: string): ParseResult {
           stmt.type === 'async_function_definition' ||
           stmt.type === 'decorated_definition'
         ) {
-          extractFunctionNode(stmt, className);
+          extractFunctionNode(stmt, className, null);
         }
       }
     }
   }
 
   // ── Pass 3: Call edges ─────────────────────────────────────────────────────
+  // For each function node, collect calls inside its *own* body only (not
+  // descending into nested function bodies, which have their own nodes).
+  // Self-calls are emitted as 'recursive-call' edges (self-loop: source === target).
   Object.entries(functionMap).forEach(([callerName, callerId]) => {
     const astNode = nodeAstMap[callerId];
     if (!astNode) return;
-    const callees = collectCallees(astNode, code);
+
+    // Build the set of nested body nodes so we don't descend into them
+    const ownBodyNode = nodeAstBodyMap[callerId];
+    const nestedBodies = new Set<TSNode>();
+    if (ownBodyNode) {
+      for (const stmt of ownBodyNode.namedChildren) {
+        if (
+          stmt.type === 'function_definition' ||
+          stmt.type === 'async_function_definition'
+        ) {
+          const nestedBody = stmt.namedChildren.find((c: TSNode) => c.type === 'block');
+          if (nestedBody) nestedBodies.add(nestedBody);
+        }
+      }
+    }
+
+    const callees = collectCallees(astNode, code, nestedBodies);
     const seen = new Set<string>();
     callees.forEach(callee => {
-      if (callee === callerName) return;
       if (seen.has(callee)) return;
       const calleeId = functionMap[callee];
-      if (calleeId && calleeId !== callerId) {
-        seen.add(callee);
+      if (!calleeId) return;
+      seen.add(callee);
+
+      if (callee === callerName || calleeId === callerId) {
+        // Direct recursion — emit a self-loop edge
+        edges.push({
+          id: `edge_${callerId}_${callerId}_recursive`,
+          source: callerId,
+          target: callerId,
+          label: '↺ recursive',
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#f59e0b', strokeWidth: 2, strokeDasharray: '5 3' },
+          markerEnd: { type: 'ArrowClosed', color: '#f59e0b' },
+          data: { edgeType: 'recursive-call' }
+        });
+      } else {
         edges.push({
           id: `edge_${callerId}_${calleeId}_call`,
           source: callerId,

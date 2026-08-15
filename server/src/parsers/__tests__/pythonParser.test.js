@@ -106,7 +106,11 @@ def utility(x, y):
   });
 });
 
-// ── 4. Nested function — outer captured, inner NOT top-level ──────────────────
+// ── 4. Nested function — inner IS emitted with containingParent ───────────────
+//
+// Previous behaviour: inner was silently skipped.
+// New behaviour: inner is emitted as its own functionNode with containingParent
+// set to the outer function's node ID (so the layout can nest it correctly).
 
 describe('nested function', () => {
   const code = `
@@ -123,12 +127,24 @@ def outer(x):
     expect(outer).toBeDefined();
   });
 
-  it('does NOT emit inner as a top-level functionNode', () => {
+  it('emits inner as a functionNode with containingParent set', () => {
     const r = parsePython(code);
     const fns = getFnNodes(r);
+    const outer = fns.find(f => f.data.label === 'outer');
     const inner = fns.find(f => f.data.label === 'inner');
-    // inner must not appear as a separate top-level node
-    expect(inner).toBeUndefined();
+    // inner is now emitted — it has containingParent pointing to outer
+    expect(inner).toBeDefined();
+    expect(inner.data.containingParent).toBe(outer.id);
+  });
+
+  it('emits a membership edge from outer to inner', () => {
+    const r = parsePython(code);
+    const fns = getFnNodes(r);
+    const outer = fns.find(f => f.data.label === 'outer');
+    const inner = fns.find(f => f.data.label === 'inner');
+    const membership = getEdgesByType(r, 'membership');
+    const edge = membership.find(e => e.source === outer.id && e.target === inner.id);
+    expect(edge).toBeDefined();
   });
 });
 
@@ -219,3 +235,112 @@ class Calculator:
     expect(methods.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+// ── 8. Nested function inside a method ───────────────────────────────────────
+//
+// Mirrors the Solution.allPathsSourceTarget snippet from the bug report.
+// Verifies that:
+//   - The nested function `dfs` gets its own functionNode
+//   - A membership edge exists from `allPathsSourceTarget` → `dfs`
+//   - A recursive-call (self-loop) edge exists on `dfs`
+
+describe('nested function inside a method', () => {
+  const code = `
+class Solution:
+    def allPathsSourceTarget(self, graph):
+        res = []
+        n = len(graph)
+
+        def dfs(node, path):
+            if node == n - 1:
+                res.append(path[:])
+                return
+            for nei in graph[node]:
+                path.append(nei)
+                dfs(nei, path)
+                path.pop()
+
+        dfs(0, [0])
+        return res
+`.trim();
+
+  it('emits a functionNode for the nested dfs function', () => {
+    const r = parsePython(code);
+    const dfsNode = getFnNodes(r).find(n => n.data.label === 'dfs');
+    expect(dfsNode).toBeDefined();
+  });
+
+  it('emits the parent allPathsSourceTarget as a functionNode', () => {
+    const r = parsePython(code);
+    const parentNode = getFnNodes(r).find(n => n.data.label === 'allPathsSourceTarget');
+    expect(parentNode).toBeDefined();
+  });
+
+  it('emits a membership edge from allPathsSourceTarget to dfs', () => {
+    const r = parsePython(code);
+    const parentNode = getFnNodes(r).find(n => n.data.label === 'allPathsSourceTarget');
+    const dfsNode = getFnNodes(r).find(n => n.data.label === 'dfs');
+    expect(parentNode).toBeDefined();
+    expect(dfsNode).toBeDefined();
+    const containmentEdges = getEdgesByType(r, 'membership');
+    const parentToDfs = containmentEdges.find(
+      e => e.source === parentNode.id && e.target === dfsNode.id
+    );
+    expect(parentToDfs).toBeDefined();
+  });
+
+  it('emits a recursive-call self-loop edge on dfs', () => {
+    const r = parsePython(code);
+    const recursiveEdges = getEdgesByType(r, 'recursive-call');
+    expect(recursiveEdges.length).toBeGreaterThanOrEqual(1);
+    // The self-loop must have source === target
+    recursiveEdges.forEach(e => expect(e.source).toBe(e.target));
+  });
+
+  it('dfs node has containingParent set to allPathsSourceTarget node id', () => {
+    const r = parsePython(code);
+    const parentNode = getFnNodes(r).find(n => n.data.label === 'allPathsSourceTarget');
+    const dfsNode = getFnNodes(r).find(n => n.data.label === 'dfs');
+    // containingParent links back to parent fn nodeId (not className)
+    expect(dfsNode.data.containingParent).toBe(parentNode.id);
+  });
+});
+
+// ── 9. Sibling top-level functions calling each other ─────────────────────────
+//
+// Confirms normal call edges between sibling (non-nested) functions work
+// after the nested-function changes.
+
+describe('sibling functions with call edges', () => {
+  const code = `
+def helper(x):
+    return x * 2
+
+def main(data):
+    return helper(data) + 1
+`.trim();
+
+  it('emits both function nodes', () => {
+    const r = parsePython(code);
+    const fns = getFnNodes(r);
+    expect(fns.find(n => n.data.label === 'helper')).toBeDefined();
+    expect(fns.find(n => n.data.label === 'main')).toBeDefined();
+  });
+
+  it('emits a call edge from main to helper', () => {
+    const r = parsePython(code);
+    const helperNode = getFnNodes(r).find(n => n.data.label === 'helper');
+    const mainNode = getFnNodes(r).find(n => n.data.label === 'main');
+    const callEdges = getEdgesByType(r, 'call');
+    const edge = callEdges.find(
+      e => e.source === mainNode.id && e.target === helperNode.id
+    );
+    expect(edge).toBeDefined();
+  });
+
+  it('does not emit a recursive-call edge for these functions', () => {
+    const r = parsePython(code);
+    expect(getEdgesByType(r, 'recursive-call')).toHaveLength(0);
+  });
+});
+

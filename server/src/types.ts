@@ -42,6 +42,8 @@ export interface FunctionNodeData extends BaseNodeData {
   decorators?: string[];
   docstring?: string | null;
   containingClass?: string | null;
+  /** Set when this function is nested inside another function (not a class method). */
+  containingParent?: string | null;
 }
 
 export type NodeData = ClassNodeData | FunctionNodeData;
@@ -61,6 +63,7 @@ export type EdgeType =
   | 'implementation'
   | 'membership'
   | 'call'
+  | 'recursive-call'
   | 'import'
   | 'cross-import'
   | 'file-containment';

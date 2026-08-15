@@ -530,6 +530,62 @@ body {
   gap: 6px;
 }
 
+/* ── Edge Legend ─────────────────────────────────────────────────────────────── */
+.edge-legend {
+  position: absolute;
+  bottom: 80px;   /* above the ReactFlow attribution / controls */
+  left: 12px;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  min-width: 170px;
+  max-width: 220px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.edge-legend__toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.edge-legend__toggle:hover { color: var(--text-secondary); }
+.edge-legend__toggle-icon { font-size: 10px; opacity: 0.7; }
+
+.edge-legend__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edge-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edge-legend__label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .canvas-btn {
   display: flex;
   align-items: center;

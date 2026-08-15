@@ -1,16 +1,18 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   addEdge,
   BackgroundVariant
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import FunctionNode from './nodes/FunctionNode';
 import ClassNode from './nodes/ClassNode';
+import EdgeLegend from './EdgeLegend';
 import { getLayoutedElements } from '../utils/layoutGraph';
 import { GitBranch, LayoutGrid } from 'lucide-react';
 
@@ -29,6 +31,9 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [collapsedIds, setCollapsedIds] = useState(new Set());
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
+  const { fitView } = useReactFlow();
+  // Track whether we've scheduled a fitView for the latest graph load
+  const pendingFitRef = useRef(false);
 
   // Store raw graph data so we can re-layout on collapse toggle
   const rawDataRef = useMemo(() => ({ nodes: [], edges: [] }), []);
@@ -89,6 +94,12 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
       new Set()
     );
 
+    const visibleNodeCount = ln.filter(n => !n.hidden).length;
+    // Use more padding for small graphs so isolated nodes don't dominate the canvas
+    const fitPadding = visibleNodeCount <= 3 ? 0.4 : 0.18;
+    const fitMaxZoom = visibleNodeCount <= 3 ? 0.9 : 1.5;
+
+    pendingFitRef.current = true;
     setTimeout(() => {
       setNodes(ln.map(n => ({
         ...n,
@@ -98,6 +109,11 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
           : n.data
       })));
       setEdges(le);
+      // fitView after state settles so ReactFlow has measured the nodes
+      requestAnimationFrame(() => {
+        fitView({ padding: fitPadding, maxZoom: fitMaxZoom, duration: 350 });
+        pendingFitRef.current = false;
+      });
     }, 0);
   }
 
@@ -188,8 +204,9 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
       if (isActiveEdge) {
         // Determine accent color based on edge type
         let accentColor = '#67e8f9'; // cyan-light default
-        if (edge.data?.edgeType === 'call') accentColor = '#fbbf24'; // amber
-        if (edge.data?.edgeType === 'inheritance') accentColor = '#a78bfa'; // violet
+        if (edge.data?.edgeType === 'call') accentColor = '#fbbf24';           // amber
+        if (edge.data?.edgeType === 'recursive-call') accentColor = '#fb923c'; // orange
+        if (edge.data?.edgeType === 'inheritance') accentColor = '#a78bfa';    // violet
 
         return {
           ...edge,
@@ -221,6 +238,9 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   }, [hoveredNodeId, nodes, edges, getConnectedIds]);
 
   const isEmpty = nodes.length === 0;
+  // Count only what ReactFlow actually renders (not hidden nodes/membership edges)
+  const visibleNodeCount = displayNodes.filter(n => !n.hidden).length;
+  const visibleEdgeCount = displayEdges.length;
 
   return (
     <div className="canvas-container">
@@ -229,7 +249,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
         <div className="canvas-toolbar__left">
           <GitBranch size={14} className="canvas-toolbar__icon" />
           <span className="canvas-toolbar__label">
-            {isEmpty ? 'Parse code to generate graph' : `${nodes.filter(n => !n.hidden).length} nodes · ${edges.length} edges`}
+            {isEmpty ? 'Parse code to generate graph' : `${visibleNodeCount} nodes · ${visibleEdgeCount} edges`}
           </span>
         </div>
         <div className="canvas-toolbar__right">
@@ -289,6 +309,9 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
           style={{ background: '#0f172a', border: '1px solid #1e293b' }}
         />
       </ReactFlow>
+
+      {/* Edge-type legend — bottom-left, only edge types present in current graph */}
+      {!isEmpty && <EdgeLegend edges={edges} />}
 
       {/* Empty State */}
       {isEmpty && (
