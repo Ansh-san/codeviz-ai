@@ -12,6 +12,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import FunctionNode from './nodes/FunctionNode';
 import ClassNode from './nodes/ClassNode';
+import SelfLoopEdge from './SelfLoopEdge';
 import EdgeLegend from './EdgeLegend';
 import { getLayoutedElements } from '../utils/layoutGraph';
 import { GitBranch, LayoutGrid } from 'lucide-react';
@@ -19,6 +20,10 @@ import { GitBranch, LayoutGrid } from 'lucide-react';
 const nodeTypes = {
   functionNode: FunctionNode,
   classNode: ClassNode
+};
+
+const edgeTypes = {
+  'self-loop': SelfLoopEdge
 };
 
 const edgeOptions = {
@@ -210,6 +215,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
 
         return {
           ...edge,
+          type: edge.source === edge.target ? 'self-loop' : 'default',
           animated: true,
           className: 'edge--highlighted',
           style: {
@@ -226,6 +232,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
 
       return {
         ...edge,
+        type: edge.source === edge.target ? 'self-loop' : 'default',
         className: 'edge--dimmed',
         style: {
           ...edge.style,
@@ -280,6 +287,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={edgeOptions}
         fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1.5 }}

@@ -713,7 +713,10 @@ body {
 
 /* ── Function / Method Node ── */
 .fn-node {
-  width: 200px;
+  width: 100%;
+  height: 100%;
+  min-width: 200px;
+  min-height: 110px;
   padding: 12px 14px;
   border-radius: var(--radius-md);
   background: linear-gradient(145deg, #1a1f3a 0%, #141b31 100%);
@@ -723,6 +726,8 @@ body {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .fn-node::before {
@@ -747,16 +752,32 @@ body {
 
 .fn-node--import {
   background: linear-gradient(145deg, #160d2e 0%, #110a26 100%);
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 .fn-node--import::before { background: linear-gradient(90deg, var(--violet), var(--indigo)); }
 
+.fn-node--group::after {
+  content: '';
+  position: absolute;
+  top: 70px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .fn-node__header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 7px;
+  gap: 8px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
 }
 
 .fn-node__icon {
@@ -787,6 +808,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px;
+  position: relative;
+  z-index: 1;
 }
 
 .fn-node__params {
@@ -796,6 +819,8 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
+  z-index: 1;
 }
 
 .fn-node__return {
@@ -803,15 +828,19 @@ body {
   color: var(--emerald);
   font-family: 'JetBrains Mono', monospace;
   margin-top: 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .fn-node__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 8px;
+  margin-top: auto;
   padding-top: 7px;
   border-top: 1px solid var(--border-subtle);
+  position: relative;
+  z-index: 1;
 }
 
 .fn-node__class-badge {

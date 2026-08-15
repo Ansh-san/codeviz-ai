@@ -432,11 +432,10 @@ export function parsePython(code: string): ParseResult {
           id: `edge_${callerId}_${callerId}_recursive`,
           source: callerId,
           target: callerId,
+          type: 'self-loop',
           label: '↺ recursive',
-          type: 'smoothstep',
-          animated: false,
-          style: { stroke: '#f59e0b', strokeWidth: 2, strokeDasharray: '5 3' },
-          markerEnd: { type: 'ArrowClosed', color: '#f59e0b' },
+          animated: true,
+          style: { strokeDasharray: '5 3', stroke: '#fbbf24' },
           data: { edgeType: 'recursive-call' }
         });
       } else {

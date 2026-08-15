@@ -31,7 +31,9 @@ export function buildParentChildMap(nodes) {
 
   // Second pass: map children to parents
   nodes.forEach(node => {
-    if (
+    if (node.data.containingParent) {
+      childToParent[node.id] = node.data.containingParent;
+    } else if (
       node.type === 'functionNode' &&
       node.data.containingClass &&
       classLabelToId[node.data.containingClass]
@@ -111,8 +113,8 @@ export function getLayoutedElements(nodes, edges, direction = 'TB', collapsedIds
       return;
     }
     let w, h;
-    if (node.type === 'classNode') {
-      const count = childrenPerClass[node.id] || 0;
+    const count = childrenPerClass[node.id] || 0;
+    if (node.type === 'classNode' || count > 0) {
       ({ width: w, height: h } = getClassNodeDimensions(count));
     } else {
       w = NODE_WIDTH;
@@ -171,8 +173,8 @@ export function getLayoutedElements(nodes, edges, direction = 'TB', collapsedIds
 
     const nodeWithPosition = dagreGraph.node(node.id);
     let w, h;
-    if (node.type === 'classNode') {
-      const count = childrenPerClass[node.id] || 0;
+    const count = childrenPerClass[node.id] || 0;
+    if (node.type === 'classNode' || count > 0) {
       ({ width: w, height: h } = getClassNodeDimensions(count));
     } else {
       w = NODE_WIDTH;
