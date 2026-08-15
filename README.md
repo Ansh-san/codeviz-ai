@@ -29,7 +29,7 @@ graph TD
 
     subgraph Server["server/ — Express + TypeScript"]
         Parse["POST /api/parse\ntree-sitter parsers"]
-        Analyze["POST /api/analyze\nGemini 2.0 Flash"]
+        Analyze["POST /api/analyze\nGemini 3.6 Flash"]
         AnalyzeRepo["POST /api/analyze-repo\nGitHub API + LRU cache"]
         PY[pythonParser.ts]
         JA[javaParser.ts]
@@ -102,7 +102,8 @@ Open **http://localhost:5173** in your browser.
 | `CORS_ORIGINS` | ☑️ | `http://localhost:5173` | Comma-separated list of allowed frontend origins. Set this for deployment. |
 | `RATE_LIMIT_WINDOW_MS` | ☑️ | `900000` (15 min) | Rate limit window in milliseconds |
 | `RATE_LIMIT_MAX` | ☑️ | `20` | Max requests per window per IP (applies to `/api/analyze` and `/api/analyze-repo`) |
-| `GEMINI_MODEL` | ☑️ | `gemini-2.0-flash` | Gemini model to use. Alternatives: `gemini-2.5-flash` (Preview, higher quality) |
+| `GEMINI_MODEL` | ☑️ | `gemini-3.6-flash` | Primary Gemini model. **Do not use `gemini-2.0-flash`** — shut down June 1, 2026 (returns 404). |
+| `GEMINI_FALLBACK_MODEL` | ☑️ | `gemini-3.5-flash` | Fallback model used automatically if the primary call fails (quota / outage). |
 
 ### Client (`client/.env`)
 

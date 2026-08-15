@@ -4,13 +4,16 @@ import { GoogleGenAI } from '@google/genai';
 const router = express.Router();
 
 // ── Model Selection ────────────────────────────────────────────────────────────
-// We use 'gemini-2.0-flash' — the current stable general-availability model in
-// the @google/genai SDK (as of 2025). The brief mentioned 'gemini-3.5-flash' and
-// 'gemini-3.6-flash', but neither is a real Gemini model identifier. The closest
-// current-generation models are gemini-2.0-flash (GA) and gemini-2.5-flash (Preview).
-// gemini-2.0-flash is chosen for GA stability; switch to gemini-2.5-flash for
-// higher reasoning quality once it reaches GA.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+// Primary:  gemini-3.6-flash — current GA model as of mid-2026; cheaper and more
+//           token-efficient than 3.5-flash. Overridable via GEMINI_MODEL env var.
+// Fallback: gemini-3.5-flash — the previously deployed model, still valid, used
+//           automatically if the primary call returns a non-200 error (e.g. quota
+//           exhaustion or regional unavailability).
+//
+// ⚠️  DO NOT use gemini-2.0-flash — it was shut down on June 1, 2026 and any
+//     call to it returns HTTP 404 from the Gemini API.
+const GEMINI_MODEL         = process.env.GEMINI_MODEL  || 'gemini-3.6-flash';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash';
 
 interface AnalyzeRequestBody {
   code?: string;
@@ -53,14 +56,30 @@ router.post('/', async (req: Request<object, object, AnalyzeRequestBody>, res: R
       ? buildLaymanPrompt(code, nodeLabel, nodeType, language)
       : buildTechPrompt(code, nodeLabel, nodeType, language);
 
-    const result = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-    });
+    // ── Try primary model; fall back to GEMINI_FALLBACK_MODEL on any error ──────
+    let text = '';
+    let modelUsed = GEMINI_MODEL;
+    try {
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+      });
+      text = result.text ?? '';
+    } catch (primaryErr) {
+      const primaryError = primaryErr as Error;
+      console.warn(
+        `[Analyze] Primary model "${GEMINI_MODEL}" failed (${primaryError.message}); ` +
+        `retrying with fallback "${GEMINI_FALLBACK_MODEL}"`
+      );
+      modelUsed = GEMINI_FALLBACK_MODEL;
+      const fallbackResult = await ai.models.generateContent({
+        model: GEMINI_FALLBACK_MODEL,
+        contents: prompt,
+      });
+      text = fallbackResult.text ?? '';
+    }
 
-    const text = result.text ?? '';
-
-    console.log(`[Analyze] Gemini response (${analysisMode}): ${text.length} chars`);
+    console.log(`[Analyze] Gemini response (${analysisMode}, model=${modelUsed}): ${text.length} chars`);
 
     return res.json({
       success: true,
@@ -68,6 +87,7 @@ router.post('/', async (req: Request<object, object, AnalyzeRequestBody>, res: R
       nodeType,
       language,
       mode: analysisMode,
+      modelUsed,
       analysis: text
     });
   } catch (err) {
