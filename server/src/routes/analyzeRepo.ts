@@ -292,7 +292,7 @@ router.post('/', async (req: Request<object, object, AnalyzeRepoBody>, res: Resp
               label: 'contains',
               type: 'smoothstep',
               style: { stroke: '#334155', strokeWidth: 1 },
-              markerEnd: { type: 'ArrowClosed', color: '#334155' },
+              markerEnd: { type: 'arrowclosed', color: '#334155' },
               data: { edgeType: 'file-containment' }
             });
           });
@@ -353,7 +353,7 @@ router.post('/', async (req: Request<object, object, AnalyzeRepoBody>, res: Resp
                   type: 'smoothstep',
                   animated: false,
                   style: { stroke: '#7c3aed', strokeDasharray: '4 2', strokeWidth: 1.5 },
-                  markerEnd: { type: 'ArrowClosed', color: '#7c3aed' },
+                  markerEnd: { type: 'arrowclosed', color: '#7c3aed' },
                   data: { edgeType: 'cross-import' }
                 });
               }

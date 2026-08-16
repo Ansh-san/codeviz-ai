@@ -200,7 +200,7 @@ export function parseJava(code: string): ParseResult {
         label: 'extends',
         type: 'smoothstep',
         style: { stroke: '#8b5cf6', strokeDasharray: '6 3' },
-        markerEnd: { type: 'ArrowClosed', color: '#8b5cf6' },
+        markerEnd: { type: 'arrowclosed', color: '#8b5cf6' },
         data: { edgeType: 'inheritance' }
       });
     }
@@ -214,7 +214,7 @@ export function parseJava(code: string): ParseResult {
           label: 'implements',
           type: 'smoothstep',
           style: { stroke: '#10b981', strokeDasharray: '4 2' },
-          markerEnd: { type: 'ArrowClosed', color: '#10b981' },
+          markerEnd: { type: 'arrowclosed', color: '#10b981' },
           data: { edgeType: 'implementation' }
         });
       }
@@ -294,7 +294,7 @@ export function parseJava(code: string): ParseResult {
         label: 'contains',
         type: 'smoothstep',
         style: { stroke: '#06b6d4', strokeWidth: 1.5 },
-        markerEnd: { type: 'ArrowClosed', color: '#06b6d4' },
+        markerEnd: { type: 'arrowclosed', color: '#06b6d4' },
         data: { edgeType: 'membership' }
       });
     }
@@ -340,10 +340,10 @@ export function parseJava(code: string): ParseResult {
           source: callerId,
           target: calleeId,
           label: 'calls',
-          type: 'bezier',
+          type: 'default',
           animated: true,
           style: { stroke: '#f59e0b', strokeWidth: 1.5 },
-          markerEnd: { type: 'ArrowClosed', color: '#f59e0b' },
+          markerEnd: { type: 'arrowclosed', color: '#f59e0b' },
           data: { edgeType: 'call' }
         });
       }

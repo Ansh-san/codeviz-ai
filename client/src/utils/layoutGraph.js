@@ -12,6 +12,10 @@ import ELK from 'elkjs/lib/elk.bundled.js';
 
 const elk = new ELK();
 
+// Set to true temporarily to log ELK output to the browser console for verification.
+// Flip back to false once confirmed.
+const DEBUG_LAYOUT = false;
+
 // Default sizes used when ELK needs a node footprint to work with.
 // ELK will expand parent nodes to fit their children automatically.
 const DEFAULT_NODE_WIDTH = 220;
@@ -266,7 +270,31 @@ export async function getLayoutedElements(nodes, edges, _direction = 'TB', colla
   // Run ELK layout
   const elkResult = await elk.layout(elkGraph);
 
-  // Build per-node collapse/childCount state for reconstruction
+  // ── Debug logging (remove / set DEBUG_LAYOUT=false when done) ──────────────
+  if (DEBUG_LAYOUT) {
+    const allElkNodes = elkResult.children || [];
+    console.group('[ELK] Layout complete');
+    console.log('Input node count:', nodes.length, '| ELK top-level nodes:', allElkNodes.length);
+    const sample = allElkNodes.slice(0, 3);
+    sample.forEach((n, i) => {
+      console.log(
+        `  node[${i}] id=${n.id}`,
+        `x=${n.x?.toFixed(1)} y=${n.y?.toFixed(1)}`,
+        `w=${n.width?.toFixed(1)} h=${n.height?.toFixed(1)}`,
+        n.children?.length ? `children=${n.children.length}` : ''
+      );
+      (n.children || []).slice(0, 2).forEach((c, j) => {
+        console.log(
+          `    child[${j}] id=${c.id}`,
+          `x=${c.x?.toFixed(1)} y=${c.y?.toFixed(1)}`,
+          `w=${c.width?.toFixed(1)} h=${c.height?.toFixed(1)}`
+        );
+      });
+    });
+    console.groupEnd();
+  }
+  // ───────────────────────────────────────────────────────────────────────
+
   const collapsedState = {};
   nodes.forEach(n => {
     collapsedState[n.id] = {
