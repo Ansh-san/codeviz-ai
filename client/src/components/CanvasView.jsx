@@ -26,6 +26,18 @@ const edgeOptions = {
   style: { stroke: '#475569', strokeWidth: 1.5 }
 };
 
+// All object/function props passed to ReactFlow must be stable references
+// (defined outside the component) to avoid React Flow error #002.
+const fitViewOptions = { padding: 0.15, maxZoom: 1.5 };
+const proOptions = { hideAttribution: true };
+const miniMapNodeColor = (node) => {
+  if (node.type === 'classNode') return '#0e7490';
+  if (node.data?.nodeType === 'import') return '#7c3aed';
+  return '#4338ca';
+};
+const miniMapStyle = { background: '#0f172a', border: '1px solid #1e293b' };
+
+
 export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -282,11 +294,11 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
         nodeTypes={nodeTypes}
         defaultEdgeOptions={edgeOptions}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1.5 }}
+        fitViewOptions={fitViewOptions}
         minZoom={0.1}
         maxZoom={3}
         attributionPosition="bottom-right"
-        proOptions={{ hideAttribution: true }}
+        proOptions={proOptions}
       >
         <Background
           variant={BackgroundVariant.Dots}
@@ -300,13 +312,9 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
         />
         <MiniMap
           className="canvas-minimap"
-          nodeColor={node => {
-            if (node.type === 'classNode') return '#0e7490';
-            if (node.data?.nodeType === 'import') return '#7c3aed';
-            return '#4338ca';
-          }}
+          nodeColor={miniMapNodeColor}
           maskColor="rgba(0,0,0,0.6)"
-          style={{ background: '#0f172a', border: '1px solid #1e293b' }}
+          style={miniMapStyle}
         />
       </ReactFlow>
 
