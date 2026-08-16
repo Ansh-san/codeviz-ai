@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -32,90 +32,94 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   const [collapsedIds, setCollapsedIds] = useState(new Set());
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const { fitView } = useReactFlow();
-  // Track whether we've scheduled a fitView for the latest graph load
-  const pendingFitRef = useRef(false);
 
-  // Store raw graph data so we can re-layout on collapse toggle
-  const rawDataRef = useMemo(() => ({ nodes: [], edges: [] }), []);
+  // Store raw graph data so we can re-layout on collapse toggle / re-layout button
+  const rawDataRef = useRef({ nodes: [], edges: [] });
 
-  // Toggle collapse handler — passed down into ClassNode data
-  const handleToggleCollapse = useCallback((classNodeId) => {
-    setCollapsedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(classNodeId)) {
-        next.delete(classNodeId);
-      } else {
-        next.add(classNodeId);
-      }
+  // ── helpers ────────────────────────────────────────────────────────────────
 
-      // Re-layout with the updated collapsed set
-      const { nodes: ln, edges: le } = getLayoutedElements(
-        rawDataRef.nodes,
-        rawDataRef.edges,
-        'TB',
-        next
-      );
+  /**
+   * Inject the toggle callback into class nodes and apply the selected-node class.
+   * Returns a new array — does not mutate input.
+   */
+  const injectCallbacks = useCallback((rfNodes, toggleFn, currentSelectedId) => {
+    return rfNodes.map(n => ({
+      ...n,
+      className: currentSelectedId === n.id ? 'selected-node' : '',
+      data: n.type === 'classNode'
+        ? { ...n.data, onToggleCollapse: toggleFn }
+        : n.data,
+    }));
+  }, []);
 
-      // Inject the toggle callback into class nodes
-      const nodesWithCallbacks = ln.map(n => ({
-        ...n,
-        className: selectedNodeId === n.id ? 'selected-node' : '',
-        data: n.type === 'classNode'
-          ? { ...n.data, onToggleCollapse: handleToggleCollapse }
-          : n.data
-      }));
+  // ── Toggle collapse ────────────────────────────────────────────────────────
 
-      // Use setTimeout to avoid React state-update-during-render warnings
-      setTimeout(() => {
-        setNodes(nodesWithCallbacks);
-        setEdges(le);
-      }, 0);
+  // Forward-declared via ref so handleToggleCollapse can reference itself in
+  // injectCallbacks without a stale-closure problem.
+  const handleToggleCollapseRef = useRef(null);
 
-      return next;
-    });
-  }, [rawDataRef, selectedNodeId, setNodes, setEdges]);
+  const handleToggleCollapse = useCallback(async (classNodeId) => {
+    const next = new Set(collapsedIds);
+    if (next.has(classNodeId)) {
+      next.delete(classNodeId);
+    } else {
+      next.add(classNodeId);
+    }
+    setCollapsedIds(next);
 
-  // Apply new graph data when it changes
-  const prevDataRef = useMemo(() => ({ data: null }), []);
-  if (graphData && graphData !== prevDataRef.data) {
-    prevDataRef.data = graphData;
-
-    // Store raw data for re-layout on collapse
-    rawDataRef.nodes = graphData.nodes;
-    rawDataRef.edges = graphData.edges;
-
-    // Reset collapsed state on new parse
-    setCollapsedIds(new Set());
-
-    const { nodes: ln, edges: le } = getLayoutedElements(
-      graphData.nodes,
-      graphData.edges,
+    const { nodes: ln, edges: le } = await getLayoutedElements(
+      rawDataRef.current.nodes,
+      rawDataRef.current.edges,
       'TB',
-      new Set()
+      next
     );
 
-    const visibleNodeCount = ln.filter(n => !n.hidden).length;
-    // Use more padding for small graphs so isolated nodes don't dominate the canvas
-    const fitPadding = visibleNodeCount <= 3 ? 0.4 : 0.18;
-    const fitMaxZoom = visibleNodeCount <= 3 ? 0.9 : 1.5;
+    setNodes(injectCallbacks(ln, handleToggleCollapseRef.current, selectedNodeId));
+    setEdges(le);
+  }, [collapsedIds, selectedNodeId, injectCallbacks, setNodes, setEdges]);
 
-    pendingFitRef.current = true;
-    setTimeout(() => {
-      setNodes(ln.map(n => ({
-        ...n,
-        className: selectedNodeId === n.id ? 'selected-node' : '',
-        data: n.type === 'classNode'
-          ? { ...n.data, onToggleCollapse: handleToggleCollapse }
-          : n.data
-      })));
-      setEdges(le);
-      // fitView after state settles so ReactFlow has measured the nodes
-      requestAnimationFrame(() => {
-        fitView({ padding: fitPadding, maxZoom: fitMaxZoom, duration: 350 });
-        pendingFitRef.current = false;
+  // Keep ref in sync
+  handleToggleCollapseRef.current = handleToggleCollapse;
+
+  // ── Load new graph data via useEffect (handles async ELK layout) ───────────
+
+  useEffect(() => {
+    if (!graphData) return;
+
+    // Store raw data for re-layout on collapse / re-layout button
+    rawDataRef.current = { nodes: graphData.nodes, edges: graphData.edges };
+
+    // Reset collapse state whenever new graph data arrives
+    setCollapsedIds(new Set());
+
+    let cancelled = false;
+
+    getLayoutedElements(graphData.nodes, graphData.edges, 'TB', new Set())
+      .then(({ nodes: ln, edges: le }) => {
+        if (cancelled) return;
+
+        const visibleCount = ln.filter(n => !n.hidden).length;
+        const fitPadding = visibleCount <= 3 ? 0.4 : 0.18;
+        const fitMaxZoom = visibleCount <= 3 ? 0.9 : 1.5;
+
+        setNodes(injectCallbacks(ln, handleToggleCollapseRef.current, selectedNodeId));
+        setEdges(le);
+
+        requestAnimationFrame(() => {
+          if (!cancelled) {
+            fitView({ padding: fitPadding, maxZoom: fitMaxZoom, duration: 350 });
+          }
+        });
+      })
+      .catch(err => {
+        if (!cancelled) console.error('[ELK layout error]', err);
       });
-    }, 0);
-  }
+
+    return () => { cancelled = true; };
+    // selectedNodeId intentionally omitted — we re-apply it via injectCallbacks
+    // inside the then() using the ref, so we don't need to re-run layout on click
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphData]);
 
   const onConnect = useCallback(
     params => setEdges(eds => addEdge({ ...params, animated: true }, eds)),
@@ -130,25 +134,21 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
     })));
   }, [onNodeClick, setNodes]);
 
-  const handleReLayout = useCallback(() => {
-    const { nodes: ln, edges: le } = getLayoutedElements(
-      rawDataRef.nodes,
-      rawDataRef.edges,
+  // ── Re-layout button ───────────────────────────────────────────────────────
+
+  const handleReLayout = useCallback(async () => {
+    const { nodes: ln, edges: le } = await getLayoutedElements(
+      rawDataRef.current.nodes,
+      rawDataRef.current.edges,
       'TB',
       collapsedIds
     );
 
-    setNodes(ln.map(n => ({
-      ...n,
-      className: selectedNodeId === n.id ? 'selected-node' : '',
-      data: n.type === 'classNode'
-        ? { ...n.data, onToggleCollapse: handleToggleCollapse }
-        : n.data
-    })));
+    setNodes(injectCallbacks(ln, handleToggleCollapseRef.current, selectedNodeId));
     setEdges(le);
-  }, [rawDataRef, collapsedIds, selectedNodeId, handleToggleCollapse, setNodes, setEdges]);
+  }, [collapsedIds, selectedNodeId, injectCallbacks, setNodes, setEdges]);
 
-  // ── Hover highlighting logic ──────────────────────────────────────────
+  // ── Hover highlighting logic ───────────────────────────────────────────────
 
   /**
    * Given a nodeId and current edges, return the set of directly connected node IDs
