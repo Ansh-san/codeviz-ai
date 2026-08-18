@@ -136,7 +136,7 @@ function SimpleModeLoading() {
     <div className="sm-loading" aria-live="polite" aria-label="Analyzing snippet">
       <div className="sm-loading__inner">
         <Loader2 size={28} className="sm-loading__spinner" />
-        <p className="sm-loading__text">Analyzing snippet with Gemini AI…</p>
+        <p className="sm-loading__text">Analyzing with CodeViz AI…</p>
         <p className="sm-loading__sub">Classifying pattern · estimating complexity · generating trace</p>
       </div>
     </div>

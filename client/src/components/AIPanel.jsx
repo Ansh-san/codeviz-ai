@@ -135,7 +135,7 @@ export default function AIPanel({
               <p className="loading-text">
                 {analysisMode === 'layman'
                   ? 'Crafting a plain-English explanation...'
-                  : 'Gemini is analyzing your code...'}
+                  : 'Analyzing with CodeViz AI...'}
               </p>
               <div className="skeleton-lines">
                 {[100, 80, 90, 60, 85, 70].map((w, i) => (

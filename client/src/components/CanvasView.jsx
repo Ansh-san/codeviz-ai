@@ -7,14 +7,17 @@ import ReactFlow, {
   useEdgesState,
   useReactFlow,
   addEdge,
-  BackgroundVariant
+  BackgroundVariant,
+  getNodesBounds,
+  getTransformForBounds
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import FunctionNode from './nodes/FunctionNode';
 import ClassNode from './nodes/ClassNode';
 import EdgeLegend from './EdgeLegend';
 import { getLayoutedElements } from '../utils/layoutGraph';
-import { GitBranch, LayoutGrid } from 'lucide-react';
+import { GitBranch, LayoutGrid, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 const nodeTypes = {
   functionNode: FunctionNode,
@@ -160,6 +163,42 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
     setEdges(le);
   }, [collapsedIds, selectedNodeId, injectCallbacks, setNodes, setEdges]);
 
+  // ── Export graph as PNG ──────────────────────────────────────────────
+
+  const handleExportPng = useCallback(() => {
+    // Target the ReactFlow viewport element directly
+    const viewport = document.querySelector('.react-flow__viewport');
+    if (!viewport) return;
+
+    // Compute a bounding box around all visible (non-hidden) nodes so
+    // the export crops tightly to the graph, not the full viewport area.
+    const visibleNodes = nodes.filter(n => !n.hidden);
+    if (visibleNodes.length === 0) return;
+
+    const IMAGE_W = 1600;
+    const IMAGE_H = 900;
+    const PADDING = 60;
+
+    const bounds   = getNodesBounds(visibleNodes);
+    const transform = getTransformForBounds(bounds, IMAGE_W, IMAGE_H, 0.5, 2, PADDING);
+
+    toPng(viewport, {
+      backgroundColor: '#060912',  // matches --bg-deep
+      width:  IMAGE_W,
+      height: IMAGE_H,
+      style: {
+        width:  `${IMAGE_W}px`,
+        height: `${IMAGE_H}px`,
+        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+      },
+    }).then(dataUrl => {
+      const link = document.createElement('a');
+      link.download = 'codeviz-graph.png';
+      link.href = dataUrl;
+      link.click();
+    }).catch(err => console.error('[Export PNG]', err));
+  }, [nodes]);
+
   // ── Hover highlighting logic ───────────────────────────────────────────────
 
   /**
@@ -275,6 +314,15 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
               >
                 <LayoutGrid size={14} />
                 Re-layout
+              </button>
+              <button
+                className="canvas-btn"
+                onClick={handleExportPng}
+                title="Export graph as PNG"
+                id="btn-export-png"
+              >
+                <Download size={14} />
+                Export
               </button>
             </>
           )}

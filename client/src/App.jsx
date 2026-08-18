@@ -205,7 +205,7 @@ export default function App() {
           )}
           <div className="topbar__ai-indicator">
             <Bot size={14} />
-            <span>Gemini AI</span>
+            <span>CodeViz AI</span>
             <span className="ai-status-dot" />
           </div>
         </div>
