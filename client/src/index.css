@@ -1836,3 +1836,456 @@ body {
   animation: spin 0.9s linear infinite;
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Simple Mode — View-mode toggle pill (inside CodeEditor header)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.view-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.view-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.view-mode-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+}
+
+.view-mode-btn--active {
+  background: var(--indigo);
+  color: #fff;
+  box-shadow: 0 0 8px var(--indigo-glow);
+}
+
+.view-mode-btn--active:hover {
+  background: var(--indigo-light);
+  color: #fff;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Simple Mode — Full canvas replacement
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.simple-view {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px 48px;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 10%, rgba(99, 102, 241, 0.07) 0%, transparent 60%),
+    var(--bg-base);
+}
+
+.simple-view__cards {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 580px;
+}
+
+.simple-view__card-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+
+.sm-card {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  padding: 20px 22px 18px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.sm-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+}
+
+.sm-card--main {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.1), 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.sm-card--helper {
+  border-color: var(--border-subtle);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  background: rgba(10, 14, 26, 0.65);
+}
+
+.sm-card__role {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.sm-card--main .sm-card__role {
+  color: var(--indigo-light);
+}
+
+.sm-card__header {
+  margin-bottom: 12px;
+}
+
+.sm-card__name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.sm-card--helper .sm-card__name {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.sm-card__sig {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.sm-sig__params { color: var(--text-secondary); }
+.sm-sig__arrow  { color: var(--text-muted); margin: 0 2px; }
+.sm-sig__return { color: var(--cyan-light); }
+
+/* ── Badges row ─────────────────────────────────────────────────────────── */
+
+.sm-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* Pattern badge base */
+.sm-pattern-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
+}
+
+/* Per-category colours */
+.pattern--violet {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+}
+.pattern--amber {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+.pattern--cyan {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.3);
+  color: #67e8f9;
+}
+.pattern--emerald {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+.pattern--rose {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fda4af;
+}
+.pattern--muted {
+  background: rgba(85, 96, 128, 0.2);
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+.pattern--recursive {
+  background: rgba(251, 146, 60, 0.15);
+  border-color: rgba(251, 146, 60, 0.3);
+  color: #fdba74;
+}
+
+/* Complexity pill */
+.sm-complexity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: rgba(15, 22, 41, 0.8);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+
+.sm-complexity-divider {
+  margin: 0 2px;
+  color: var(--text-muted);
+}
+
+/* ── Explanation ─────────────────────────────────────────────────────────── */
+
+.sm-card__explanation {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+/* ── Recursion trace ─────────────────────────────────────────────────────── */
+
+.sm-trace {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.sm-trace__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sm-trace__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sm-trace__step-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sm-trace__connector {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sm-trace__call {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--cyan-light);
+  background: rgba(6, 182, 212, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── "calls" arrow between cards ─────────────────────────────────────────── */
+
+.sm-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  color: var(--text-muted);
+}
+
+.sm-arrow__line {
+  width: 1px;
+  height: 18px;
+  background: linear-gradient(to bottom, var(--border-light), var(--border-subtle));
+}
+
+.sm-arrow__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sm-arrow__head {
+  color: var(--text-muted);
+  transform: rotate(90deg);
+  margin-top: -2px;
+}
+
+/* ── Loading state ───────────────────────────────────────────────────────── */
+
+.sm-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-loading__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.sm-loading__spinner {
+  color: var(--indigo-light);
+  animation: spin 1s linear infinite;
+}
+
+.sm-loading__text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.sm-loading__sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Error state ─────────────────────────────────────────────────────────── */
+
+.sm-error {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--rose);
+  text-align: center;
+  padding: 32px;
+}
+
+.sm-error p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.sm-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sm-empty__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  max-width: 380px;
+}
+
+.sm-empty__icon {
+  font-size: 44px;
+  color: var(--indigo-light);
+  opacity: 0.5;
+  line-height: 1;
+}
+
+.sm-empty__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sm-empty__desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.sm-empty__examples {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ── Mock banner ─────────────────────────────────────────────────────────── */
+
+.sm-mock-banner {
+  width: 100%;
+  max-width: 580px;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 11.5px;
+  color: #fcd34d;
+  text-align: center;
+}
+
+.sm-mock-banner code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+

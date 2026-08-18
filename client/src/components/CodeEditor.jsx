@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Code2, Trash2, Play } from 'lucide-react';
+import { ChevronDown, Code2, Trash2, Play, LayoutGrid, Layers } from 'lucide-react';
 
 const PYTHON_SAMPLE = `class BinarySearchTree:
     """A Binary Search Tree implementation."""
@@ -163,7 +163,7 @@ const SAMPLES = {
   java: JAVA_SAMPLE
 };
 
-export default function CodeEditor({ code, language, onCodeChange, onLanguageChange, onParse, loading }) {
+export default function CodeEditor({ code, language, onCodeChange, onLanguageChange, onParse, loading, viewMode, onViewModeChange }) {
   const [showSamples, setShowSamples] = useState(false);
 
   const loadSample = () => {
@@ -203,6 +203,30 @@ export default function CodeEditor({ code, language, onCodeChange, onLanguageCha
               Java
             </button>
           </div>
+
+          {/* View Mode Toggle — only shown when prop is provided (Paste Code tab only) */}
+          {onViewModeChange && (
+            <div className="view-mode-toggle" role="group" aria-label="Visualization mode">
+              <button
+                className={`view-mode-btn ${viewMode === 'simple' ? 'view-mode-btn--active' : ''}`}
+                onClick={() => onViewModeChange('simple')}
+                id="btn-simple-mode"
+                title="Simple Mode — clean card view for single functions"
+              >
+                <Layers size={11} />
+                Simple
+              </button>
+              <button
+                className={`view-mode-btn ${viewMode === 'codebase' ? 'view-mode-btn--active' : ''}`}
+                onClick={() => onViewModeChange('codebase')}
+                id="btn-codebase-mode"
+                title="Codebase Mode — full class/method graph"
+              >
+                <LayoutGrid size={11} />
+                Codebase
+              </button>
+            </div>
+          )}
 
           {/* Sample Button */}
           <button

@@ -8,6 +8,7 @@ dotenv.config();
 import parseRouter from './routes/parse';
 import analyzeRouter from './routes/analyze';
 import analyzeRepoRouter from './routes/analyzeRepo';
+import analyzeSimpleRouter from './routes/analyzeSimple';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,7 @@ const apiLimiter = rateLimit({
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/parse', parseRouter);
 app.use('/api/analyze', apiLimiter, analyzeRouter);
+app.use('/api/analyze-simple', apiLimiter, analyzeSimpleRouter);
 app.use('/api/analyze-repo', apiLimiter, analyzeRepoRouter);
 
 // Health check (no rate limit — used by deployment platforms)
@@ -77,5 +79,6 @@ app.listen(PORT, () => {
   console.log(`     GET  /api/health`);
   console.log(`     POST /api/parse`);
   console.log(`     POST /api/analyze`);
+  console.log(`     POST /api/analyze-simple`);
   console.log(`     POST /api/analyze-repo\n`);
 });

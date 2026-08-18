@@ -4,15 +4,21 @@ import CodeEditor from './components/CodeEditor';
 import CanvasView from './components/CanvasView';
 import AIPanel from './components/AIPanel';
 import RepoInput from './components/RepoInput';
+import SimpleModeView from './components/SimpleModeView';
 import { useParser } from './hooks/useParser';
 import { useAnalyzer } from './hooks/useAnalyzer';
 import { useRepoAnalyzer } from './hooks/useRepoAnalyzer';
+import { useSimpleAnalyzer } from './hooks/useSimpleAnalyzer';
 import { Cpu, Sparkles, Activity, AlertCircle, Bot, Code2 } from 'lucide-react';
 import { FaGithub } from 'react-icons/fa';
 
 export default function App() {
   // ── Input mode: 'paste' (single-file) or 'repo' (GitHub) ─────────────────
   const [inputMode, setInputMode] = useState('paste');
+
+  // ── View mode: 'simple' (flat card view) or 'codebase' (full graph) ───────
+  // Only relevant in the 'paste' tab. Repo analysis always uses 'codebase'.
+  const [viewMode, setViewMode] = useState('codebase');
 
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('python');
@@ -26,6 +32,7 @@ export default function App() {
   const { parse, loading: parseLoading, error: parseError } = useParser();
   const { analyze, loading: analyzeLoading, error: analyzeError, analysis, isMock, clearAnalysis } = useAnalyzer();
   const { analyzeRepo, loading: repoLoading, error: repoError, progress: repoProgress, clearResult: clearRepo } = useRepoAnalyzer();
+  const { analyze: analyzeSimple, loading: simpleLoading, error: simpleError, result: simpleResult, isMock: simpleMock, clearResult: clearSimple } = useSimpleAnalyzer();
 
   // ── Paste-code flow ────────────────────────────────────────────────────────
 
@@ -43,8 +50,14 @@ export default function App() {
       setIsPanelOpen(false);
       setRepoMeta(null);
       clearAnalysis();
+
+      // ── Auto-trigger Simple Mode analysis when in simple view ─────────────
+      if (viewMode === 'simple') {
+        clearSimple();
+        analyzeSimple(code, language);
+      }
     }
-  }, [code, language, parse, clearAnalysis]);
+  }, [code, language, parse, clearAnalysis, viewMode, analyzeSimple, clearSimple]);
 
   // ── Repo analysis flow ─────────────────────────────────────────────────────
 
@@ -107,14 +120,17 @@ export default function App() {
     setParseStats(null);
     setRepoMeta(null);
     clearAnalysis();
+    clearSimple();
     setSelectedNode(null);
     setIsPanelOpen(false);
-  }, [clearAnalysis]);
+  }, [clearAnalysis, clearSimple]);
 
   // ── Mode tab switch ────────────────────────────────────────────────────────
 
   const handleModeSwitch = useCallback((mode) => {
     setInputMode(mode);
+    // Repo tab always uses codebase mode
+    if (mode === 'repo') setViewMode('codebase');
     // Clear graph when switching modes so stale data isn't confusing
     setGraphData(null);
     setParseStats(null);
@@ -122,8 +138,21 @@ export default function App() {
     setSelectedNode(null);
     setIsPanelOpen(false);
     clearAnalysis();
+    clearSimple();
     clearRepo();
-  }, [clearAnalysis, clearRepo]);
+  }, [clearAnalysis, clearSimple, clearRepo]);
+
+  // ── View mode toggle (Simple ↔ Codebase) ──────────────────────────────────
+  const handleViewModeChange = useCallback((mode) => {
+    setViewMode(mode);
+    // If switching to Simple and we already have graph data, run analysis now
+    if (mode === 'simple' && graphData && code.trim()) {
+      clearSimple();
+      analyzeSimple(code, language);
+    }
+    // Clear simple results when switching away
+    if (mode === 'codebase') clearSimple();
+  }, [graphData, code, language, analyzeSimple, clearSimple]);
 
   const activeError = inputMode === 'paste' ? parseError : repoError;
   const activeLoading = inputMode === 'paste' ? parseLoading : repoLoading;
@@ -216,6 +245,8 @@ export default function App() {
               onLanguageChange={handleLanguageChange}
               onParse={handleParse}
               loading={parseLoading}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
             />
           ) : (
             <RepoInput
@@ -227,15 +258,24 @@ export default function App() {
           )}
         </aside>
 
-        {/* Center: Canvas */}
+        {/* Center: Canvas — Simple Mode or Codebase graph */}
         <section className="canvas-section" aria-label="AST Graph Canvas">
-          <ReactFlowProvider>
-            <CanvasView
-              graphData={graphData}
-              onNodeClick={handleNodeClick}
-              selectedNodeId={selectedNode?.id}
+          {viewMode === 'simple' && inputMode === 'paste' ? (
+            <SimpleModeView
+              loading={simpleLoading}
+              error={simpleError}
+              result={simpleResult}
+              isMock={simpleMock}
             />
-          </ReactFlowProvider>
+          ) : (
+            <ReactFlowProvider>
+              <CanvasView
+                graphData={graphData}
+                onNodeClick={handleNodeClick}
+                selectedNodeId={selectedNode?.id}
+              />
+            </ReactFlowProvider>
+          )}
         </section>
 
         {/* Right Panel: AI Inspector */}
