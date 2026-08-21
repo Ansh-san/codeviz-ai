@@ -31,7 +31,7 @@ const edgeOptions = {
 
 // All object/function props passed to ReactFlow must be stable references
 // (defined outside the component) to avoid React Flow error #002.
-const fitViewOptions = { padding: 0.15, maxZoom: 1.5 };
+const fitViewOptions = { padding: 0.25, maxZoom: 1.2 };
 const proOptions = { hideAttribution: true };
 const miniMapNodeColor = (node) => {
   if (node.type === 'classNode') return '#0e7490';

@@ -18,11 +18,28 @@ const DEBUG_LAYOUT = false;
 
 // Default sizes used when ELK needs a node footprint to work with.
 // ELK will expand parent nodes to fit their children automatically.
-const DEFAULT_NODE_WIDTH = 220;
-const DEFAULT_NODE_HEIGHT = 120;
+const DEFAULT_NODE_WIDTH = 240;
+const DEFAULT_NODE_HEIGHT = 130;
 
-// ELK layout options applied to the root graph.
-const ELK_OPTIONS = {
+// ── Layout configs ─────────────────────────────────────────────────────────
+// "Simple" layout: ≤ 8 top-level nodes, max 1 level of nesting.
+//   → horizontal, wide spacing, smooth edges, centered look.
+// "Complex" layout: large repos, deep nesting.
+//   → vertical layered, dense packing, orthogonal routing.
+
+const ELK_OPTIONS_SIMPLE = {
+  'elk.algorithm': 'layered',
+  'elk.direction': 'RIGHT',                 // left-to-right horizontal flow
+  'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+  'elk.padding': '[top=40,left=40,bottom=40,right=40]',
+  'elk.spacing.nodeNode': '80',             // generous horizontal breathing room
+  'elk.layered.spacing.nodeNodeBetweenLayers': '120', // tall gaps between rows
+  'elk.edgeRouting': 'SPLINES',            // smooth curved edges
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+  'elk.layered.crossingMinimization.semiInteractive': 'true',
+};
+
+const ELK_OPTIONS_COMPLEX = {
   'elk.algorithm': 'layered',
   'elk.direction': 'DOWN',
   'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
@@ -35,6 +52,28 @@ const ELK_OPTIONS = {
   // Edge routing within and between hierarchy levels
   'elk.edgeRouting': 'ORTHOGONAL',
 };
+
+/**
+ * Detect whether to use the "simple" layout.
+ * Simple = few nodes AND shallow nesting (≤ 1 level deep).
+ */
+function isSimpleGraph(nodes, childToParent) {
+  // Count top-level nodes (no parent)
+  const topLevelCount = nodes.filter(n => !childToParent[n.id]).length;
+  // Find the deepest nesting level
+  const maxDepth = nodes.reduce((maxD, n) => {
+    let depth = 0;
+    let current = n.id;
+    while (childToParent[current]) {
+      depth++;
+      current = childToParent[current];
+      if (depth > 10) break; // safety
+    }
+    return Math.max(maxD, depth);
+  }, 0);
+  return topLevelCount <= 8 && maxDepth <= 1;
+}
+
 
 /**
  * Build a map of childNodeId → parentNodeId.
@@ -259,10 +298,15 @@ export async function getLayoutedElements(nodes, edges, _direction = 'TB', colla
     childCountMap[parentId] = (childCountMap[parentId] || 0) + 1;
   });
 
+  // Pick layout config based on graph complexity
+  const layoutOptions = isSimpleGraph(nodes, childToParent)
+    ? ELK_OPTIONS_SIMPLE
+    : ELK_OPTIONS_COMPLEX;
+
   // Build the nested ELK graph
   const elkGraph = {
     id: 'root',
-    layoutOptions: ELK_OPTIONS,
+    layoutOptions,
     children: buildElkNodes(nodes, childToParent, hiddenChildIds),
     edges: buildElkEdges(edges, hiddenChildIds),
   };
