@@ -46,7 +46,7 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [collapsedIds, setCollapsedIds] = useState(new Set());
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
-  const { fitView } = useReactFlow();
+  const { fitView, setCenter } = useReactFlow();
 
   // Store raw graph data so we can re-layout on collapse toggle / re-layout button
   const rawDataRef = useRef({ nodes: [], edges: [] });
@@ -147,7 +147,15 @@ export default function CanvasView({ graphData, onNodeClick, selectedNodeId }) {
       ...n,
       className: n.id === node.id ? 'selected-node' : ''
     })));
-  }, [onNodeClick, setNodes]);
+
+    // Smoothly zoom the camera to center on the clicked node
+    const nodeW = node.width  || node.style?.width  || 240;
+    const nodeH = node.height || node.style?.height || 130;
+    // position is relative to parentNode if nested — use absolute coords
+    const absX = (node.positionAbsolute?.x ?? node.position.x) + nodeW / 2;
+    const absY = (node.positionAbsolute?.y ?? node.position.y) + nodeH / 2;
+    setCenter(absX, absY, { zoom: 1.55, duration: 520 });
+  }, [onNodeClick, setNodes, setCenter]);
 
   // ── Re-layout button ───────────────────────────────────────────────────────
 

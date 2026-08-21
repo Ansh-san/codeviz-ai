@@ -293,6 +293,8 @@ export default function App() {
             isMock={isMock}
             analysisMode={analysisMode}
             onModeChange={handleModeChange}
+            allNodes={graphData?.nodes || []}
+            allEdges={graphData?.edges || []}
           />
         </aside>
       </main>
